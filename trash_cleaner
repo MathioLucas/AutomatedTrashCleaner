@@ -1,0 +1,72 @@
+import os
+import shutil
+from datetime import datetime, timedelta
+import time
+import logging
+
+class TrashCleaner:
+    def __init__(self, trash_path, max_age_days=7, log_path='trash_cleaner.log'):
+       
+        self.trash_path = os.path.abspath(trash_path)
+        self.max_age_days = max_age_days
+        
+       
+        logging.basicConfig(
+            filename=log_path, 
+            level=logging.INFO, 
+            format='%(asctime)s - %(message)s'
+        )
+        
+        # Ensure trash directory exists
+        os.makedirs(self.trash_path, exist_ok=True)
+
+    def clean_trash(self):
+        
+        current_time = datetime.now()
+        deleted_files = 0
+        
+        for filename in os.listdir(self.trash_path):
+            file_path = os.path.join(self.trash_path, filename)
+            
+            # Skip if it's a directory
+            if os.path.isdir(file_path):
+                continue
+            
+            # Get file modification time
+            mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+            
+            # Check if file is older than max_age_days
+            if (current_time - mod_time) > timedelta(days=self.max_age_days):
+                try:
+                    os.remove(file_path)
+                    deleted_files += 1
+                    logging.info(f"Deleted: {filename}")
+                except Exception as e:
+                    logging.error(f"Error deleting {filename}: {e}")
+        
+        logging.info(f"Cleanup complete. {deleted_files} files deleted.")
+        return deleted_files
+
+    def start_monitoring(self, interval_hours=24):
+       
+        logging.info("Trash monitoring started.")
+        
+        while True:
+            self.clean_trash()
+            # Sleep for specified interval
+            time.sleep(interval_hours * 3600)
+
+def main():
+    # Example usage
+    trash_cleaner = TrashCleaner(
+        trash_path='/path/to/your/trash/directory', 
+        max_age_days=7
+    )
+    
+    try:
+        trash_cleaner.start_monitoring(interval_hours=24)
+    except KeyboardInterrupt:
+        logging.info("Trash monitoring stopped.")
+
+if __name__ == "__main__":
+    main()
